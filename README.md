@@ -1,130 +1,76 @@
 # claude-memory
 
-Vault-based long-term memory plugin for Claude Code.
+Long-term memory plugin for Claude Code. Automatically captures what you do and builds a searchable knowledge base.
 
-Automatically captures session knowledge into Obsidian-compatible vaults, compiles daily logs into a structured knowledge base, and provides index-guided querying — no vector database, no embeddings.
+## Quick start
 
-Based on [Karpathy's LLM Wiki](https://x.com/karpathy/status/1934372048824365261) architecture.
-
-## How it works
-
+Install:
 ```
-Session → Hooks capture context → Flush agent extracts facts → Daily log
-                                                                   ↓
-                                                        Compiler → Knowledge articles
-                                                                   ↓
-                                                        Query engine ← User questions
-```
-
-Three hooks run automatically:
-
-| Hook | When | What it does |
-|------|------|-------------|
-| SessionStart | Session opens | Injects knowledge index + recent log into context |
-| SessionEnd | Session closes | Extracts transcript, spawns flush agent |
-| PreCompact | Before compaction | Captures context before compression |
-
-## Installation
-
-```bash
 /plugin marketplace add kraiStudio/claude-memory
 /plugin install claude-memory@claude-memory --scope user
 ```
 
-> **First run** may take 10-20 seconds while `uv` installs Python dependencies. Subsequent sessions start instantly.
-
-### Prerequisites
-
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
-- Claude Code
-
-## Setup
-
-After installing, run:
-
+Set up (first time):
 ```
 /memory
 ```
 
-The wizard will ask where to store your vault, detect your timezone, and set everything up. One command for everything:
+The wizard creates your vault and starts capturing. That's it.
 
-| State | What `/memory` does |
-|-------|-------------------|
-| First run | Setup wizard — creates vault and config |
-| New project | Connect wizard — link to existing vault or create new |
-| Configured | Show status or query the knowledge base |
+> First session after install may take 10-20 seconds (installing dependencies).
 
-### Example: query
+## What it does
 
-```
-/memory What auth approach did we decide on?
-```
+Every time you close a session, the plugin extracts what changed — files edited, decisions made, things discovered — and saves it to your vault. Over time, it compiles these into a structured knowledge base.
 
-### Example: compile
+When you start a new session, Claude already knows what happened before.
 
 ```
-/memory compile
+You work → Session ends → Flush extracts facts → Daily log
+                                                      ↓
+                                              Compiler → Knowledge articles
+                                                      ↓
+                                          Next session ← Claude reads index
 ```
 
-## Two memory modes
+## Two modes
 
-**Personal memory** — your private knowledge vault outside the project:
-
+**Personal** — your private memory, stored outside the project:
 ```
 ~/Documents/Vaults/work/
-├── daily/              # session logs
-├── knowledge/          # compiled articles
-│   ├── index.md
-│   ├── concepts/
-│   ├── connections/
-│   └── qa/
-└── raw/                # files for manual compilation
+├── daily/           # session logs
+├── knowledge/       # compiled articles
+└── raw/             # files for manual processing
 ```
 
-**Project memory** — shared team knowledge inside the repo:
-
+**Project** — shared team knowledge, stored in the repo:
 ```
 project/.memory/
-├── knowledge/          # articles (no daily logs)
-│   ├── index.md
-│   ├── concepts/
-│   ├── connections/
-│   └── qa/
+├── knowledge/       # articles (no daily logs)
 └── raw/
 ```
 
-Mode is determined automatically: `.memory/` in project → project mode. Otherwise → personal mode.
+Mode switches automatically: if `.memory/` exists in the project — project mode. Otherwise — personal.
 
-Vaults are Obsidian-compatible — only markdown files, no technical clutter. State files are stored in `~/.config/claude-memory/`.
+Both are Obsidian-compatible. Open as vault to browse.
 
-## Configuration
+## Commands
 
-All config lives in `~/.config/claude-memory/config.yaml`, managed by `/memory`:
+Everything through one command — `/memory`:
 
-```yaml
-timezone: Europe/Moscow
-compile_after_hour: 18
-default_vault: work
+| What you type | What happens |
+|---------------|-------------|
+| `/memory` | Status, or setup wizard if not configured |
+| `/memory` + question | Query the knowledge base |
+| `/memory compile` | Compile daily logs into articles |
+| `/memory check` | Health check (broken links, orphans, stale articles) |
+| `/memory uninstall` | Clean up before removing the plugin |
 
-vaults:
-  work:
-    path: ~/Documents/Vaults/work
-  personal:
-    path: ~/Documents/Vaults/personal
+## Requirements
 
-projects:
-  ~/Documents/Dev/Creative Lab: creative-lab
-```
-
-## Design decisions
-
-- **No RAG** — index-guided retrieval. Simple, transparent, no infrastructure.
-- **Haiku for extraction** — cheap (~$0.01/flush), sufficient for summarization.
-- **Opus for compilation** — higher quality for structured knowledge articles.
-- **Echo detection** — discards responses where the agent echoes conversation instead of extracting.
-- **Offset tracking** — each flush processes only new transcript lines.
-- **Obsidian-first** — vaults contain only markdown. Technical files stored separately.
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- Claude Code
 
 ## License
 
