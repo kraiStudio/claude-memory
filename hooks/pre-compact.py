@@ -118,12 +118,14 @@ def main() -> None:
     session_id = hook_input.get("session_id", "unknown")
     transcript_path_str = hook_input.get("transcript_path", "")
 
-    vault_path = resolve_vault()
-    if vault_path is None:
+    vault_info = resolve_vault()
+    if vault_info is None:
         logging.info("SKIP: no vault configured")
         return
 
-    logging.info("PreCompact fired: session=%s vault=%s", session_id, vault_path)
+    vault_path = vault_info.path
+    vault_mode = vault_info.mode
+    logging.info("PreCompact fired: session=%s vault=%s mode=%s", session_id, vault_path, vault_mode)
 
     if not transcript_path_str or not isinstance(transcript_path_str, str):
         logging.info("SKIP: no transcript path")
@@ -155,7 +157,7 @@ def main() -> None:
     flush_script = SCRIPTS_DIR / "flush.py"
     cmd = [
         "uv", "run", "--directory", str(ROOT),
-        "python", str(flush_script), str(context_file), session_id, str(vault_path),
+        "python", str(flush_script), str(context_file), session_id, str(vault_path), vault_mode,
     ]
 
     creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0

@@ -28,6 +28,7 @@ STATE_FILE = SCRIPTS_DIR / "last-flush.json"
 LOG_FILE = SCRIPTS_DIR / "flush.log"
 
 VAULT_PATH = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else ROOT
+VAULT_MODE = sys.argv[4] if len(sys.argv) > 4 else "personal"
 DAILY_DIR = VAULT_PATH / "daily"
 
 logging.basicConfig(
@@ -158,6 +159,88 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from config import COMPILE_AFTER_HOUR
 
 
+async def run_flush_project(context: str) -> None:
+    """Project mode: use Claude Agent SDK with tools to directly write/update articles in .memory/."""
+    from claude_agent_sdk import (
+        AssistantMessage,
+        ClaudeAgentOptions,
+        ResultMessage,
+        TextBlock,
+        query,
+    )
+
+    knowledge_dir = VAULT_PATH / "knowledge"
+    index_file = knowledge_dir / "index.md"
+    index_content = index_file.read_text(encoding="utf-8") if index_file.exists() else "(empty)"
+
+    prompt = f"""You are a project memory agent. Analyze the conversation transcript and update the project knowledge base.
+
+## Current Knowledge Index
+
+{index_content}
+
+## Conversation Transcript
+
+<conversation_transcript>
+{context}
+</conversation_transcript>
+
+## Your Task
+
+Extract knowledge relevant to THIS PROJECT (architecture, decisions, patterns, API quirks, discovered bugs) and write it into the knowledge base.
+
+### Rules:
+1. Read the existing index to understand what articles already exist
+2. If new knowledge fits an existing article — read it and UPDATE it (use Edit tool)
+3. If it's a new topic — CREATE a new article in the appropriate directory
+4. Update knowledge/index.md with any new entries
+5. SKIP personal questions, experiments, and anything not relevant to the project
+
+### File paths:
+- Concept articles: {knowledge_dir / 'concepts'}/
+- Connection articles: {knowledge_dir / 'connections'}/
+- Index: {index_file}
+
+### Article format:
+```markdown
+---
+title: Article Title
+summary: One-line summary
+updated: {datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d')}
+---
+
+Content with [[concepts/wikilinks]] to related articles.
+```
+
+### Quality:
+- ACCURACY IS CRITICAL. Double-check facts against the transcript.
+- If nothing project-relevant happened in this session, just respond with FLUSH_OK (no tool calls).
+"""
+
+    try:
+        async for message in query(
+            prompt=prompt,
+            options=ClaudeAgentOptions(
+                model="claude-haiku-4-5-20251001",
+                cwd=str(VAULT_PATH),
+                system_prompt={"type": "preset", "preset": "claude_code"},
+                allowed_tools=["Read", "Write", "Edit", "Glob"],
+                permission_mode="acceptEdits",
+                max_turns=15,
+            ),
+        ):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        logging.info("  Project flush: %s", block.text[:200])
+            elif isinstance(message, ResultMessage):
+                cost = message.total_cost_usd or 0.0
+                logging.info("  Project flush complete, cost: $%.4f", cost)
+    except Exception as e:
+        import traceback
+        logging.error("Project flush error: %s\n%s", e, traceback.format_exc())
+
+
 def maybe_trigger_compilation() -> None:
     """Compile daily logs if needed: past-day uncompiled logs always, today's log after compile hour."""
     import subprocess as _sp
@@ -244,11 +327,18 @@ def main():
         context_file.unlink(missing_ok=True)
         return
 
-    logging.info("Flushing session %s: %d chars", session_id, len(context))
+    logging.info("Flushing session %s: %d chars (mode=%s)", session_id, len(context), VAULT_MODE)
 
+    if VAULT_MODE == "project":
+        # Project mode: write articles directly to .memory/knowledge/
+        asyncio.run(run_flush_project(context))
+        context_file.unlink(missing_ok=True)
+        logging.info("Flush complete for session %s (project mode)", session_id)
+        return
+
+    # Personal mode: extract to daily log, then maybe compile
     response = asyncio.run(run_flush(context))
 
-    # Validate and append to daily log
     trimmed = response.strip()
     stripped_for_ok = trimmed.strip("*")
     if stripped_for_ok == "FLUSH_OK":

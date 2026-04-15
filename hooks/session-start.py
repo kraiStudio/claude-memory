@@ -1,8 +1,7 @@
 """
 SessionStart hook — injects knowledge base context from the resolved vault.
 
-If no config exists → prompts /memory-init.
-If config exists but no vault for this project → works with default or prompts /memory-connect.
+Supports both personal mode (vault) and project mode (.memory/).
 """
 
 import json
@@ -32,7 +31,7 @@ def get_recent_log(daily_dir: Path) -> str:
     return ""
 
 
-def build_context(vault_path: Path) -> str:
+def build_context_personal(vault_path: Path) -> str:
     parts = []
     today = datetime.now(timezone.utc).astimezone()
     parts.append(f"## Today\n{today.strftime('%A, %B %d, %Y')}")
@@ -53,7 +52,37 @@ def build_context(vault_path: Path) -> str:
     return context
 
 
+def build_context_project(memory_dir: Path) -> str:
+    parts = []
+    today = datetime.now(timezone.utc).astimezone()
+    parts.append(f"## Today\n{today.strftime('%A, %B %d, %Y')}")
+    parts.append(f"## Project Memory\n{memory_dir}")
+
+    index_file = memory_dir / "knowledge" / "index.md"
+    if index_file.exists():
+        parts.append(f"## Knowledge Base Index\n\n{index_file.read_text(encoding='utf-8')}")
+
+    context = "\n\n---\n\n".join(parts)
+    if len(context) > MAX_CONTEXT_CHARS:
+        context = context[:MAX_CONTEXT_CHARS] + "\n\n...(truncated)"
+    return context
+
+
 def main():
+    vault_info = resolve_vault()
+
+    # .memory/ found — always use it regardless of config
+    if vault_info and vault_info.mode == "project":
+        context = build_context_project(vault_info.path)
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": context,
+            }
+        }
+        print(json.dumps(output))
+        return
+
     if not config_exists():
         output = {
             "hookSpecificOutput": {
@@ -64,9 +93,7 @@ def main():
         print(json.dumps(output))
         return
 
-    vault_path = resolve_vault()
-
-    if vault_path is None:
+    if vault_info is None:
         output = {
             "hookSpecificOutput": {
                 "hookEventName": "SessionStart",
@@ -76,7 +103,7 @@ def main():
         print(json.dumps(output))
         return
 
-    context = build_context(vault_path)
+    context = build_context_personal(vault_info.path)
 
     output = {
         "hookSpecificOutput": {
