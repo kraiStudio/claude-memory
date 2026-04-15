@@ -1,38 +1,40 @@
 ---
 name: memory
-description: Query or manage the vault knowledge base
+description: Query the knowledge base or check memory status
 ---
 
-# /memory command
+# /memory — Query or status
 
-Usage: `/memory <question>` — query the knowledge base
-Usage: `/memory compile` — compile today's daily log into knowledge articles
-Usage: `/memory status` — show vault status and stats
+## If no arguments provided
 
-## Query mode (default)
+Read `~/.config/claude-memory/config.yaml` and show status:
+- List of vaults (name, path, article count)
+- Which vault the current project uses
+- Whether compilation is pending
 
-When given a question, query the active vault's knowledge base:
+To count articles, check `<vault_path>/knowledge/concepts/*.md`, `connections/*.md`, `qa/*.md`.
+
+## If a question is provided
+
+Query the active vault's knowledge base using the query script:
 
 ```bash
 uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/query.py "<question>" --vault <vault_path>
 ```
 
-## Compile mode
+The vault path is resolved from config.yaml based on the current project directory.
 
-Trigger knowledge compilation from daily logs:
+## If "compile" is provided
+
+Trigger knowledge compilation:
 
 ```bash
 uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/compile.py --vault <vault_path>
 ```
 
-## Status mode
-
-Read and report the vault's knowledge/index.md and scripts/state.json to show:
-- Number of knowledge articles
-- Last compilation date
-- Total API cost
-- Recent daily logs
-
 ## Vault resolution
 
-The vault path is determined from `CLAUDE.local.md` in the current project directory (look for `memory_vault:` line). If not found, defaults to `~/Documents/Vaults/work`.
+1. Read `~/.config/claude-memory/config.yaml`
+2. Match current directory against `projects` map
+3. Fall back to `default_vault`
+4. If no config: suggest running `/memory-init`

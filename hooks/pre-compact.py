@@ -2,6 +2,7 @@
 PreCompact hook — captures conversation before auto-compaction.
 
 Same logic as session-end but fires before context compression mid-session.
+Skips gracefully if no vault is configured.
 """
 
 from __future__ import annotations
@@ -37,9 +38,7 @@ MIN_TURNS_TO_FLUSH = 5
 
 
 def extract_conversation_context(transcript_path: Path) -> tuple[str, int]:
-    """Read JSONL transcript and extract conversation turns as markdown."""
     turns: list[str] = []
-
     with open(transcript_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -73,10 +72,7 @@ def extract_conversation_context(transcript_path: Path) -> tuple[str, int]:
                             tool_input = block.get("input", {})
                             summary_parts = [f"[Tool: {tool_name}"]
                             if isinstance(tool_input, dict):
-                                for key in (
-                                    "file_path", "command", "pattern",
-                                    "database", "content", "old_string", "new_string",
-                                ):
+                                for key in ("file_path", "command", "pattern", "database", "content", "old_string", "new_string"):
                                     if key in tool_input:
                                         val = str(tool_input[key])[:200]
                                         summary_parts.append(f" {key}={val}")
@@ -84,9 +80,7 @@ def extract_conversation_context(transcript_path: Path) -> tuple[str, int]:
                         elif btype == "tool_result":
                             result_content = block.get("content", "")
                             if isinstance(result_content, list):
-                                result_text = " ".join(
-                                    r.get("text", "") for r in result_content if isinstance(r, dict)
-                                )
+                                result_text = " ".join(r.get("text", "") for r in result_content if isinstance(r, dict))
                             else:
                                 result_text = str(result_content)
                             if result_text.strip():
@@ -100,12 +94,11 @@ def extract_conversation_context(transcript_path: Path) -> tuple[str, int]:
                 turns.append(f"**{label}:** {content.strip()}\n")
 
     context = "\n".join(turns)
-
     if len(context) > MAX_CONTEXT_CHARS:
         context = context[-MAX_CONTEXT_CHARS:]
         boundary = context.find("\n**")
         if boundary > 0:
-            context = context[boundary + 1 :]
+            context = context[boundary + 1:]
 
     return context, len(turns)
 
@@ -126,6 +119,10 @@ def main() -> None:
     transcript_path_str = hook_input.get("transcript_path", "")
 
     vault_path = resolve_vault()
+    if vault_path is None:
+        logging.info("SKIP: no vault configured")
+        return
+
     logging.info("PreCompact fired: session=%s vault=%s", session_id, vault_path)
 
     if not transcript_path_str or not isinstance(transcript_path_str, str):
@@ -156,28 +153,15 @@ def main() -> None:
     context_file.write_text(context, encoding="utf-8")
 
     flush_script = SCRIPTS_DIR / "flush.py"
-
     cmd = [
-        "uv",
-        "run",
-        "--directory",
-        str(ROOT),
-        "python",
-        str(flush_script),
-        str(context_file),
-        session_id,
-        str(vault_path),
+        "uv", "run", "--directory", str(ROOT),
+        "python", str(flush_script), str(context_file), session_id, str(vault_path),
     ]
 
     creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
     try:
-        subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=creation_flags,
-        )
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=creation_flags)
         logging.info("Spawned flush.py for session %s (%d turns, %d chars) -> %s", session_id, turn_count, len(context), vault_path)
     except Exception as e:
         logging.error("Failed to spawn flush.py: %s", e)

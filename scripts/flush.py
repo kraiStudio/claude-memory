@@ -147,7 +147,8 @@ Your response must start with either "**Context:**" or "FLUSH_OK" — nothing el
     return response
 
 
-COMPILE_AFTER_HOUR = int(os.getenv("COMPILE_AFTER_HOUR", "18"))
+sys.path.insert(0, str(SCRIPTS_DIR))
+from config import COMPILE_AFTER_HOUR
 
 
 def maybe_trigger_compilation() -> None:
