@@ -92,13 +92,69 @@ Guide the user step by step:
 uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/query.py "<question>" --vault <vault_path>
 ```
 
-**"compile" argument — trigger compilation:**
+**"compile" argument — interactive compilation:**
+
+Ask the user what to compile:
+
+> What to compile?
+> 1. New daily logs only (changed since last compile)
+> 2. Everything from scratch
+> 3. Specific file
+> 4. Raw files from raw/
+
+Based on choice, run the appropriate command:
+
+- Option 1 (default):
+  ```bash
+  uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/compile.py --vault <vault_path>
+  ```
+- Option 2:
+  ```bash
+  uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/compile.py --vault <vault_path> --all
+  ```
+- Option 3: Ask which file, then:
+  ```bash
+  uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/compile.py --vault <vault_path> --file <filename>
+  ```
+- Option 4: Process raw files (see below)
+
+Before running, you can show what will be compiled with `--dry-run`.
+
+**"compile raw" or option 4 — compile raw files:**
+
+1. List files in `<vault_path>/raw/` (exclude `processed/` subdirectory)
+2. If no files → "No raw files to process."
+3. For each file: read it, extract project-relevant knowledge, create/update articles in `knowledge/`
+4. After processing each file, move it to `<vault_path>/raw/processed/`
+5. Update `knowledge/index.md` with any new articles
+
+**"check" argument — lint knowledge base:**
+
+Run the lint script:
 ```bash
-uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/compile.py --vault <vault_path>
+uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/lint.py --vault <vault_path>
 ```
 
-**"compile raw" argument — compile raw files:**
-Check `<vault_path>/raw/` for unprocessed files. Read each, extract knowledge, write articles to `knowledge/`. Move processed files to `raw/processed/`.
+For structural checks only (no LLM, free):
+```bash
+uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/lint.py --vault <vault_path> --structural-only
+```
+
+Show the report to the user. If fixable issues found, ask if they want auto-fix.
+
+**"uninstall" argument — cleanup:**
+
+1. Read `~/.config/claude-memory/config.yaml`
+2. Show what will be affected:
+   - Config file at `~/.config/claude-memory/`
+   - List all vaults with article counts
+3. Ask:
+   > What to delete?
+   > 1. Config only (keep all vaults)
+   > 2. Config + select vaults to delete
+   > 3. Everything (config + all vaults)
+4. Perform deletions
+5. Remind: "Now uninstall the plugin: `/plugin uninstall claude-memory`"
 
 ---
 
