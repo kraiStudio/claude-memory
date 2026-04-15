@@ -1,0 +1,9 @@
+{
+  "name": "claude-memory",
+  "version": "0.1.0",
+  "description": "Vault-based long-term memory for Claude Code. Captures session knowledge into Obsidian-compatible vaults with automatic compilation.",
+  "author": {
+    "name": "Vlad Shinkevich"
+  },
+  "hooks": "./hooks/hooks.json"
+}

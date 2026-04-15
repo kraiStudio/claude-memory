@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+scripts/flush.log
+scripts/compile.log
+scripts/last-flush.json
+scripts/state.json
+scripts/session-flush-*.md
+scripts/flush-context-*.md
+.env
