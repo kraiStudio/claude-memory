@@ -106,6 +106,13 @@ Start your response with **Context:** followed by a one-line summary, then inclu
 
 Omit empty sections. Respond with exactly FLUSH_OK if the session was trivial (no changes, no decisions).
 
+## Quality Rules
+
+- ACCURACY IS CRITICAL. Double-check each fact against the transcript.
+- If the user ADDED something, write "added". If they REMOVED something, write "removed". Never invert.
+- When in doubt about direction (added vs removed, enabled vs disabled), quote the exact action from the transcript.
+- Prefer quoting key terms rather than paraphrasing when there is any ambiguity.
+
 <conversation_transcript>
 {context}
 </conversation_transcript>
@@ -152,34 +159,51 @@ from config import COMPILE_AFTER_HOUR
 
 
 def maybe_trigger_compilation() -> None:
-    """If it's past the compile hour and today's log hasn't been compiled, run compile.py."""
+    """Compile daily logs if needed: past-day uncompiled logs always, today's log after compile hour."""
     import subprocess as _sp
     from hashlib import sha256
 
-    now = datetime.now(timezone.utc).astimezone()
-    if now.hour < COMPILE_AFTER_HOUR:
+    if not DAILY_DIR.exists():
         return
 
-    today_log = f"{now.strftime('%Y-%m-%d')}.md"
-    compile_state_file = VAULT_PATH / "knowledge" / "state.json"
+    now = datetime.now(timezone.utc).astimezone()
+    today = now.strftime("%Y-%m-%d")
+
+    # Load compilation state from ~/.config/claude-memory/state/
+    from config import STATE_DIR
+    state_name = VAULT_PATH.name + ".json"
+    compile_state_file = STATE_DIR / state_name
+    # Fallback: check old location in vault
+    if not compile_state_file.exists():
+        compile_state_file = VAULT_PATH / "knowledge" / "state.json"
+    ingested = {}
     if compile_state_file.exists():
         try:
             compile_state = json.loads(compile_state_file.read_text(encoding="utf-8"))
             ingested = compile_state.get("ingested", {})
-            if today_log in ingested:
-                log_path = DAILY_DIR / today_log
-                if log_path.exists():
-                    current_hash = sha256(log_path.read_bytes()).hexdigest()[:16]
-                    if ingested[today_log].get("hash") == current_hash:
-                        return
         except (json.JSONDecodeError, OSError):
             pass
+
+    # Check all daily logs for uncompiled or changed files
+    needs_compile = False
+    for log_path in sorted(DAILY_DIR.glob("*.md")):
+        # Skip today's log unless it's past compile hour
+        if log_path.stem == today and now.hour < COMPILE_AFTER_HOUR:
+            continue
+        current_hash = sha256(log_path.read_bytes()).hexdigest()[:16]
+        prev = ingested.get(log_path.name, {})
+        if not prev or prev.get("hash") != current_hash:
+            needs_compile = True
+            break
+
+    if not needs_compile:
+        return
 
     compile_script = SCRIPTS_DIR / "compile.py"
     if not compile_script.exists():
         return
 
-    logging.info("End-of-day compilation triggered (after %d:00)", COMPILE_AFTER_HOUR)
+    logging.info("Compilation triggered")
 
     cmd = [
         "uv", "run", "--directory", str(ROOT),

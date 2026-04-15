@@ -8,6 +8,7 @@ import yaml
 
 CONFIG_DIR = Path.home() / ".config" / "claude-memory"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
+STATE_DIR = CONFIG_DIR / "state"
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = ROOT_DIR / "scripts"
@@ -48,7 +49,12 @@ CONNECTIONS_DIR = KNOWLEDGE_DIR / "connections"
 QA_DIR = KNOWLEDGE_DIR / "qa"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"
 LOG_FILE = KNOWLEDGE_DIR / "log.md"
-STATE_FILE = SCRIPTS_DIR / "state.json"
+STATE_FILE = STATE_DIR / "default.json"
+
+
+def _vault_state_name(vault_path: Path) -> str:
+    """Convert vault path to a safe filename for state storage."""
+    return vault_path.name + ".json"
 
 
 def set_vault(vault_path: Path) -> None:
@@ -61,7 +67,8 @@ def set_vault(vault_path: Path) -> None:
     QA_DIR = KNOWLEDGE_DIR / "qa"
     INDEX_FILE = KNOWLEDGE_DIR / "index.md"
     LOG_FILE = KNOWLEDGE_DIR / "log.md"
-    STATE_FILE = KNOWLEDGE_DIR / "state.json"
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_FILE = STATE_DIR / _vault_state_name(vault_path)
 
 
 def now_iso() -> str:

@@ -76,13 +76,15 @@ and extract knowledge into structured wiki articles.
 
 ## Your Task
 
+**Compilation date: {timestamp[:10]}** — use this for ALL `updated` fields and index entries. Do NOT use the date from the source filename.
+
 Read the daily log above and compile it into wiki articles.
 
 ### Rules:
 
 1. **Extract key concepts** — identify distinct concepts worth their own article
 2. **Create concept articles** in `knowledge/concepts/` — one .md file per concept
-   - YAML frontmatter with title, summary, sources, updated date
+   - YAML frontmatter with title, summary, sources, `updated: {timestamp[:10]}`
    - Use `[[concepts/slug]]` wikilinks to link to related concepts
    - Write in encyclopedia style — neutral, comprehensive
 3. **Create connection articles** in `knowledge/connections/` if this log reveals non-obvious

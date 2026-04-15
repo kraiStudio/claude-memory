@@ -16,38 +16,22 @@ Session → Hooks capture context → Flush agent extracts facts → Daily log
                                                         Query engine ← User questions
 ```
 
-**Three hooks run automatically:**
+Three hooks run automatically:
 
 | Hook | When | What it does |
 |------|------|-------------|
-| `SessionStart` | Session opens | Injects vault knowledge index + recent daily log into context |
-| `SessionEnd` | Session closes | Extracts conversation transcript, spawns flush agent |
-| `PreCompact` | Before auto-compaction | Same as SessionEnd — captures context before it's compressed |
-
-**Flush agent** (Haiku) analyzes the transcript and extracts:
-- Files modified and why
-- Decisions made
-- New knowledge discovered
-- Action items
-
-Results are appended to today's daily log in the vault.
-
-**Compiler** (end-of-day) reads daily logs and produces structured wiki articles with cross-references.
-
-**Query engine** reads the index, picks relevant articles, and synthesizes answers.
+| SessionStart | Session opens | Injects knowledge index + recent log into context |
+| SessionEnd | Session closes | Extracts transcript, spawns flush agent |
+| PreCompact | Before compaction | Captures context before compression |
 
 ## Installation
 
 ```bash
 /plugin marketplace add kraiStudio/claude-memory
-/plugin install claude-memory@claude-memory
+/plugin install claude-memory@claude-memory --scope user
 ```
 
-Or for development:
-
-```bash
-claude --plugin-dir /path/to/claude-memory
-```
+> **First run** may take 10-20 seconds while `uv` installs Python dependencies. Subsequent sessions start instantly.
 
 ### Prerequisites
 
@@ -60,43 +44,64 @@ claude --plugin-dir /path/to/claude-memory
 After installing, run:
 
 ```
-/memory-init
+/memory
 ```
 
-The wizard will ask:
-1. Where to store your vault (default: `~/Documents/Vaults/memory`)
-2. Use globally or for the current project only
-3. Confirm your timezone
+The wizard will ask where to store your vault, detect your timezone, and set everything up. One command for everything:
 
-That's it. Memory starts capturing from the next session.
+| State | What `/memory` does |
+|-------|-------------------|
+| First run | Setup wizard — creates vault and config |
+| New project | Connect wizard — link to existing vault or create new |
+| Configured | Show status or query the knowledge base |
 
-### Adding more projects
-
-When you open a new project and want to connect it:
+### Example: query
 
 ```
-/memory-connect
+/memory What auth approach did we decide on?
 ```
 
-Options:
-- Connect to an existing vault (shared knowledge)
-- Create a new vault (isolated knowledge)
+### Example: compile
 
-### Example configurations
-
-**Single vault for everything:**
-```yaml
-# ~/.config/claude-memory/config.yaml
-timezone: Europe/Moscow
-compile_after_hour: 18
-default_vault: memory
-
-vaults:
-  memory:
-    path: ~/Documents/Vaults/memory
+```
+/memory compile
 ```
 
-**Work + Personal separation:**
+## Two memory modes
+
+**Personal memory** — your private knowledge vault outside the project:
+
+```
+~/Documents/Vaults/work/
+├── daily/              # session logs
+├── knowledge/          # compiled articles
+│   ├── index.md
+│   ├── concepts/
+│   ├── connections/
+│   └── qa/
+└── raw/                # files for manual compilation
+```
+
+**Project memory** — shared team knowledge inside the repo:
+
+```
+project/.memory/
+├── knowledge/          # articles (no daily logs)
+│   ├── index.md
+│   ├── concepts/
+│   ├── connections/
+│   └── qa/
+└── raw/
+```
+
+Mode is determined automatically: `.memory/` in project → project mode. Otherwise → personal mode.
+
+Vaults are Obsidian-compatible — only markdown files, no technical clutter. State files are stored in `~/.config/claude-memory/`.
+
+## Configuration
+
+All config lives in `~/.config/claude-memory/config.yaml`, managed by `/memory`:
+
 ```yaml
 timezone: Europe/Moscow
 compile_after_hour: 18
@@ -109,88 +114,17 @@ vaults:
     path: ~/Documents/Vaults/personal
 
 projects:
-  ~/Documents/Personal: personal
-```
-
-**Multiple projects sharing a vault:**
-```yaml
-timezone: America/New_York
-compile_after_hour: 18
-default_vault: work
-
-vaults:
-  work:
-    path: ~/Documents/Vaults/work
-  side-project:
-    path: ~/Documents/Vaults/side-project
-
-projects:
-  ~/Documents/Dev/my-app: side-project
-  ~/Documents/Dev/my-api: side-project
-```
-
-## Commands
-
-| Command | What it does |
-|---------|-------------|
-| `/memory-init` | First-time setup wizard |
-| `/memory-connect` | Connect current project to a vault |
-| `/memory` | Query the knowledge base or show status |
-| `/memory compile` | Manually trigger knowledge compilation |
-
-## Vault structure
-
-```
-~/Documents/Vaults/work/
-├── daily/
-│   ├── 2026-04-15.md          # Auto-generated daily logs
-│   └── ...
-└── knowledge/
-    ├── index.md               # Knowledge base index
-    ├── log.md                 # Compilation log
-    ├── concepts/              # Concept articles
-    ├── connections/           # Cross-concept relationship articles
-    └── qa/                    # Filed Q&A articles
-```
-
-Vaults are Obsidian-compatible — open them as vaults for browsing and editing.
-
-## Plugin structure
-
-```
-claude-memory/
-├── .claude-plugin/
-│   ├── plugin.json            # Plugin manifest
-│   └── marketplace.json       # Marketplace index
-├── hooks/
-│   ├── hooks.json             # Hook declarations
-│   ├── session-start.py       # Context injection
-│   ├── session-end.py         # Transcript extraction + flush
-│   └── pre-compact.py         # Pre-compaction flush
-├── scripts/
-│   ├── flush.py               # LLM extraction agent (Haiku)
-│   ├── compile.py             # Knowledge compiler
-│   ├── query.py               # Index-guided query engine
-│   ├── config.py              # Central configuration
-│   ├── resolve_vault.py       # Vault resolution
-│   └── utils.py               # Wiki utilities
-├── skills/
-│   └── memory-query/SKILL.md  # Auto-activated query skill
-├── commands/
-│   ├── memory-init.md         # /memory-init setup wizard
-│   ├── memory-connect.md      # /memory-connect project binding
-│   └── memory.md              # /memory query and status
-└── pyproject.toml
+  ~/Documents/Dev/Creative Lab: creative-lab
 ```
 
 ## Design decisions
 
-- **No RAG** — index-guided retrieval. The LLM reads the index, picks articles, synthesizes. Simple, transparent, no infrastructure.
-- **Haiku for extraction** — cheap (~$0.01/flush), follows instructions well, sufficient for summarization.
-- **Echo detection** — if the flush agent echoes the conversation instead of extracting, the response is discarded and logged as `FLUSH_ECHO`.
-- **Offset tracking** — each flush processes only new transcript lines since the last flush.
-- **XML-wrapped context** — conversation transcript is wrapped in `<conversation_transcript>` tags to prevent the extraction agent from confusing input data with instructions.
-- **Config over convention** — all settings in `~/.config/claude-memory/config.yaml`. No manual file editing required — managed by `/memory-init` and `/memory-connect`.
+- **No RAG** — index-guided retrieval. Simple, transparent, no infrastructure.
+- **Haiku for extraction** — cheap (~$0.01/flush), sufficient for summarization.
+- **Opus for compilation** — higher quality for structured knowledge articles.
+- **Echo detection** — discards responses where the agent echoes conversation instead of extracting.
+- **Offset tracking** — each flush processes only new transcript lines.
+- **Obsidian-first** — vaults contain only markdown. Technical files stored separately.
 
 ## License
 
