@@ -20,7 +20,7 @@ Read `~/.config/claude-memory/config.yaml`.
 **State C — Everything configured (project mapped or default vault exists or `.memory/` exists):**
 → Go to "Status / Query" flow
 
-If the user provided arguments (a question, "compile", "compile raw"), skip state detection and go directly to the relevant action.
+If the user provided arguments (a question, "compile", "check", "uninstall"), skip state detection and go directly to the relevant action.
 
 ---
 
@@ -100,7 +100,6 @@ Ask the user what to compile:
 > 1. New daily logs only (changed since last compile)
 > 2. Everything from scratch
 > 3. Specific file
-> 4. Raw files from raw/
 
 Based on choice, run the appropriate command:
 
@@ -116,17 +115,8 @@ Based on choice, run the appropriate command:
   ```bash
   uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/compile.py --vault <vault_path> --file <filename>
   ```
-- Option 4: Process raw files (see below)
 
 Before running, you can show what will be compiled with `--dry-run`.
-
-**"compile raw" or option 4 — compile raw files:**
-
-1. List files in `<vault_path>/raw/` (exclude `processed/` subdirectory)
-2. If no files → "No raw files to process."
-3. For each file: read it, extract project-relevant knowledge, create/update articles in `knowledge/`
-4. After processing each file, move it to `<vault_path>/raw/processed/`
-5. Update `knowledge/index.md` with any new articles
 
 **"check" argument — lint knowledge base:**
 
@@ -155,6 +145,32 @@ Show the report to the user. If fixable issues found, ask if they want auto-fix.
    > 3. Everything (config + all vaults)
 4. Perform deletions
 5. Remind: "Now uninstall the plugin: `/plugin uninstall claude-memory`"
+
+---
+
+## Raw files — source library
+
+The `raw/` directory in each vault is a **permanent library of source materials** (PDFs, specs, articles, notes, screenshots). Files are NOT deleted or moved after processing — they stay as reference material.
+
+### How raw works
+
+When the user asks to add a file to the knowledge base (e.g., "add this file to memory", "process this PDF", "add raw/api-spec.pdf to the knowledge base"):
+
+1. If the file is not already in `<vault>/raw/`, copy it there first
+2. Read the file content
+3. Create a knowledge article in `knowledge/` (concepts, connections, or qa — you decide)
+4. In the article's YAML frontmatter, set `sources:` to include the raw file path:
+   ```yaml
+   sources:
+     - raw/api-spec.pdf
+   ```
+5. Update `knowledge/index.md` with the new article
+
+The user specifies exactly which files to process — never process raw files automatically.
+
+### When querying the knowledge base
+
+If a knowledge article references a `raw/` source and you need more detail than the article provides, you can read the original file from `raw/` to get full context.
 
 ---
 

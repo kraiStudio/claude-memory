@@ -40,19 +40,21 @@ You work → Session ends → Flush extracts facts → Daily log
 ~/Documents/Vaults/work/
 ├── daily/           # session logs
 ├── knowledge/       # compiled articles
-└── raw/             # files for manual processing
+└── raw/             # source library (PDFs, specs, notes)
 ```
 
 **Project** — shared team knowledge, stored in the repo:
 ```
 project/.memory/
 ├── knowledge/       # articles (no daily logs)
-└── raw/
+└── raw/             # source library
 ```
 
 Mode switches automatically: if `.memory/` exists in the project — project mode. Otherwise — personal.
 
 Both are Obsidian-compatible. Open as vault to browse.
+
+You can add external files to the knowledge base — just ask Claude to process them. They get stored in `raw/` as permanent sources, with knowledge articles referencing them.
 
 ## Commands
 

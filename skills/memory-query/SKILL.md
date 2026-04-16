@@ -22,11 +22,13 @@ Run the query script against the active vault:
 uv run --directory ${CLAUDE_PLUGIN_ROOT} python ${CLAUDE_PLUGIN_ROOT}/scripts/query.py "the question" --vault <vault_path>
 ```
 
-The vault path comes from `CLAUDE.local.md` in the project (look for `memory_vault:` line).
+The vault path is resolved from `~/.config/claude-memory/config.yaml` based on the current project, or from `.memory/` if in project mode.
 
 ## How it works
 
 The query engine reads the knowledge base index, identifies relevant articles, and synthesizes an answer. No vector database — just structured markdown and index-guided retrieval.
+
+If an article references a source in `raw/` and you need more detail, read the original file from `<vault>/raw/` for full context.
 
 ## File back
 
