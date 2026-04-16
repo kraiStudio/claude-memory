@@ -158,6 +158,39 @@ Show the report to the user. If fixable issues found, ask if they want auto-fix.
 
 ---
 
+## Project scanning — building project context
+
+When the user asks to analyze, scan, or learn the project (e.g., "analyze this project", "scan the codebase and remember", "learn the project structure"), do the following:
+
+1. Read the project directory tree (use Bash `find` or `ls -R`, exclude node_modules, .git, dist, build, .venv)
+2. Identify key files: package.json, docker-compose.yml, README.md, config files, entry points, API routes
+3. Read these key files
+4. Create knowledge articles in the active vault's `knowledge/` directory:
+   - One article per service/module with architecture overview
+   - One article for the tech stack
+   - One article for how services connect (if microservices)
+   - Articles for key patterns found in the code
+5. Update `knowledge/index.md` with all new articles
+6. Each article should include `sources:` pointing to the actual project files that were read
+
+Article format:
+```yaml
+---
+title: "Service: API Gateway"
+summary: Express.js gateway routing to auth, renderer, assets services
+sources:
+  - project:src/gateway/index.ts
+  - project:docker-compose.yml
+updated: YYYY-MM-DD
+---
+```
+
+Use `project:` prefix in sources to distinguish from `daily/` and `raw/` sources.
+
+If COMPILE.md exists in the vault, follow its rules for folder structure, naming, and language.
+
+---
+
 ## Raw files — source library
 
 The `raw/` directory in each vault is a **permanent library of source materials** (PDFs, specs, articles, notes, screenshots). Files are NOT deleted or moved after processing — they stay as reference material.

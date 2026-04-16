@@ -8,3 +8,6 @@ scripts/state.json
 scripts/session-flush-*.md
 scripts/flush-context-*.md
 .env
+.claude/*.local.md
+.claude/*.local.json
+.DS_Store

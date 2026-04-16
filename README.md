@@ -48,7 +48,27 @@ The wizard will ask:
 - Global or project-only scope
 - Timezone (auto-detected)
 
-### 3. Done
+### 3. Scan your project
+
+After setup, ask Claude to learn your project:
+
+```
+Analyze this project structure, read the key files, and add everything important to memory.
+```
+
+Claude will scan the codebase — directory tree, configs, entry points, services — and create knowledge articles in your vault. On the next session, Claude already knows your project architecture, tech stack, and key patterns without re-reading everything.
+
+You can be specific:
+
+```
+Read all API routes and save the structure to memory.
+Analyze the microservices in docker-compose and remember how they connect.
+Look at the database schema and add it to memory.
+```
+
+This is one of the most powerful features — **you build project context once, and Claude remembers it forever**.
+
+### 4. Done
 
 Memory starts capturing from the next session. No further configuration needed.
 
@@ -302,8 +322,9 @@ Technical files are stored outside the vault (in `~/.config/claude-memory/`), ke
 
 1. Install plugin with `--scope user`
 2. Run `/memory` → wizard creates vault
-3. Work normally. Memory captures automatically.
-4. Next session — Claude has context from previous sessions.
+3. Ask Claude: "Analyze this project and add to memory" → Claude scans codebase, creates articles
+4. Work normally. Memory captures automatically.
+5. Next session — Claude already knows your project.
 
 ### New project, existing user
 

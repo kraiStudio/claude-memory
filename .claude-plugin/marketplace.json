@@ -11,7 +11,7 @@
       "name": "claude-memory",
       "source": "./",
       "description": "Automatic session knowledge capture into LLM Wiki vaults. Hooks for SessionStart, SessionEnd, PreCompact. Knowledge compilation and index-guided querying.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "productivity"
     }
   ]
