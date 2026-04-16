@@ -131,6 +131,7 @@ Read the daily log above and compile it into wiki articles.
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
+                model="claude-haiku-4-5-20251001",
                 cwd=str(ROOT_DIR),
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],

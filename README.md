@@ -269,11 +269,11 @@ Three hooks run automatically via the plugin's `hooks.json`:
 
 ### Compiler
 
-- Model: Opus (higher quality for structured articles)
+- Model: Haiku (same as flush — cost-effective for structured output)
 - Creates articles with YAML frontmatter, wikilinks, and cross-references
 - Reads COMPILE.md for custom rules
 - Hash-based deduplication: only recompiles changed daily logs
-- Cost: ~$0.30-0.80 per daily log depending on length
+- Cost: ~$0.30-0.80 per daily log depending on length and model
 
 ### State management
 
