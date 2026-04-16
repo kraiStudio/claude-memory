@@ -118,6 +118,16 @@ Based on choice, run the appropriate command:
 
 Before running, you can show what will be compiled with `--dry-run`.
 
+**Custom compile rules:** If `<vault>/knowledge/COMPILE.md` exists, the compiler uses it as additional instructions. Users can define custom folder structure, naming conventions, filtering rules, and article format. These rules override defaults. Example:
+
+```markdown
+# Compile Rules
+- Tasks from Fibery go to knowledge/tasks/ (not concepts/)
+- File names: kebab-case, English
+- Skip minor bugfix sessions
+- Group architecture decisions in knowledge/decisions/
+```
+
 **"check" argument — lint knowledge base:**
 
 Run the lint script:

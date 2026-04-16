@@ -54,8 +54,6 @@ Mode switches automatically: if `.memory/` exists in the project — project mod
 
 Both are Obsidian-compatible. Open as vault to browse.
 
-You can add external files to the knowledge base — just ask Claude to process them. They get stored in `raw/` as permanent sources, with knowledge articles referencing them.
-
 ## Commands
 
 Everything through one command — `/memory`:
@@ -67,6 +65,24 @@ Everything through one command — `/memory`:
 | `/memory compile` | Compile daily logs into articles |
 | `/memory check` | Health check (broken links, orphans, stale articles) |
 | `/memory uninstall` | Clean up before removing the plugin |
+
+To add files to the knowledge base, just ask Claude naturally: "add this file to memory", "process api-spec.pdf". The file goes to `raw/` as a permanent source, and a knowledge article is created referencing it.
+
+## Customization
+
+Create `knowledge/COMPILE.md` in your vault to control how the compiler works:
+
+```markdown
+# Compile Rules
+
+- Tasks go to knowledge/tasks/ (not concepts/)
+- File names: kebab-case, English only
+- Skip minor bugfix sessions
+- Architecture decisions go to knowledge/decisions/
+- Each article must have a "Status" section
+```
+
+The compiler reads this file and follows your rules. No file = default behavior.
 
 ## Requirements
 

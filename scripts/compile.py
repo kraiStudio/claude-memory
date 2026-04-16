@@ -42,6 +42,12 @@ async def compile_daily_log(log_path: Path, state: dict) -> float:
     log_content = log_path.read_text(encoding="utf-8")
     wiki_index = read_wiki_index()
 
+    # Read custom compile rules if they exist
+    compile_rules_file = KNOWLEDGE_DIR / "COMPILE.md"
+    custom_rules = ""
+    if compile_rules_file.exists():
+        custom_rules = compile_rules_file.read_text(encoding="utf-8")
+
     # Read existing articles for context
     existing_articles_context = ""
     existing = {}
@@ -101,11 +107,14 @@ Read the daily log above and compile it into wiki articles.
    - Articles updated: [[concepts/z]] (if any)
    ```
 
+{"### Custom Rules (from COMPILE.md — these OVERRIDE defaults above)" + chr(10) + chr(10) + custom_rules if custom_rules else ""}
+
 ### File paths:
 - Write concept articles to: {CONCEPTS_DIR}
 - Write connection articles to: {CONNECTIONS_DIR}
 - Update index at: {KNOWLEDGE_DIR / 'index.md'}
 - Append log at: {KNOWLEDGE_DIR / 'log.md'}
+- You may create additional subdirectories in knowledge/ if custom rules require it
 
 ### Quality standards:
 - Every article must have complete YAML frontmatter
